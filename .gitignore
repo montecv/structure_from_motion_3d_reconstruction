@@ -1,0 +1,12 @@
+.idea/
+images/
+outputs/
+__pycache__/
+
+todo.txt
+args.txt
+.DS_Store
+image_names.txt
+
+*.npy
+
