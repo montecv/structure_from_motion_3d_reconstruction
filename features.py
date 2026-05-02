@@ -15,28 +15,44 @@ def extract_features(images, num_features):
     return np.array(features, dtype=object)
 
 
-def match_features(features):
-    #match features using flann, match each image to every other image
+def match_features(features, sequential=0):
     matches = []
-    for i in tqdm(range(len(features)), desc='Matching features'):
+    n = len(features)
+
+    matcher = cv2.FlannBasedMatcher_create()
+    for i in tqdm(range(n), desc='Matching features'):
         matches.append([])
-        for j in range(len(features)):
+
+        # decide which images to match with
+        if sequential == 0:
+            js = range(n)  # brute-force
+        else:
+            js = range(max(0, i - sequential), i)  # window backward only
+
+        for j in js:
             if i == j:
                 matches[i].append(None)
                 continue
-            #create flann matcher
-            matcher = cv2.FlannBasedMatcher_create()
-            #find matches
+
             m = matcher.knnMatch(features[i][1], features[j][1], k=2)
+
             good = []
-            for m1, m2 in m:
+            for pair in m:
+                if len(pair) < 2:
+                    continue
+
+                m1, m2 = pair
                 if m1.distance < 0.7 * m2.distance:
-                    #convert match to tupple
                     good.append((m1.queryIdx, m1.trainIdx))
+
             matches[i].append(good)
 
-    return np.array(matches, dtype=object)
+        # fill missing forward entries (important for indexing consistency)
+        if sequential != 0:
+            for _ in range(n - len(matches[i])):
+                matches[i].append(None)
 
+    return np.array(matches, dtype=object)
 
 def cross_check(matches):
     #cross check matches, only keep matches that are mutual

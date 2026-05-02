@@ -13,11 +13,12 @@ from ba import bundle_adjustment
 
 
 class SFM:
-    def __init__(self, features, matches, camera_model, reprojection_threshold):
+    def __init__(self, features, matches, camera_model, args):
         self.features = features
         self.matches = matches
         self.camera_model = camera_model
-        self.reprojection_threshold = reprojection_threshold
+        self.reprojection_threshold = args.reprojection_threshold
+        self.sequential = args.sequential
 
         #scene
         #poses of cameras (from world to camera)
@@ -38,24 +39,35 @@ class SFM:
     
     def is_finished(self):
         return self.failed or all([pose is not None for pose in self.poses])
-    
+
     def find_initial_pair(self):
-        # find the best pair of images to start with
         size = len(self.features)
-        max_number = len(sfm.matches[0][1])
-        max_i, max_j = 0, 1
-        for i in range(size):
-            for j in range(i + 1, size):
-                if len(sfm.matches[i][j]) > max_number:
-                    max_number = len(sfm.matches[i][j])
-                    max_i = i
-                    max_j = j
-        print(f"Initial pair: {max_i} {max_j}")
-        return max_i, max_j
+        if self.sequential:
+            max_i, max_j = 0, 1
+            max_matches = 0
+            for i in range(size - 1):
+                j = i + 1
+                if len(self.matches[i][j]) > max_matches:
+                    max_matches = len(self.matches[i][j])
+                    max_i, max_j = i, j
+
+            print(f"Sequential initial pair: {max_i} {max_j}")
+            return max_i, max_j
+        else:  # brute-force
+            max_number = 0
+            max_i, max_j = 0, 1
+            for i in range(size):
+                for j in range(i + 1, size):
+                    if len(self.matches[i][j]) > max_number:
+                        max_number = len(self.matches[i][j])
+                        max_i, max_j = i, j
+            print(f"Brute-force initial pair: {max_i} {max_j}")
+            return max_i, max_j
 
     def initialize(self):
         #find two images with most matches
         max_i, max_j = self.find_initial_pair()
+
         T, points, kp_id1, kp_id2 = two_view_geometry(self.features[max_i][0], self.features[max_j][0], self.matches[max_i][max_j], self.reprojection_threshold)
 
         self.poses[max_i] = np.eye(4)  # 128-arrange
@@ -266,6 +278,8 @@ class SFM:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Simple sfm pipeline')
     parser.add_argument('--input', type=str, help='input folder')
+    parser.add_argument('--video', type=str, default=None, help='input video file instead of image folder')
+    parser.add_argument('--frame_stride', type=int, default=10, help='extract every N-th frame from video')
     parser.add_argument('--camera_model', type=str, help='camera model', default='SIMPLE_RADIAL 3072 2304 2559.68 1536 1152 -0.0204997')
     parser.add_argument('--max_views', type=int, help='maximum number of views', default=-1)
     parser.add_argument('--shuffle', action='store_true', help='shuffle images')
@@ -275,6 +289,7 @@ if __name__ == '__main__':
     parser.add_argument('--reprojection_threshold', type=float, help='reprojection threshold', default=1e-3)
     parser.add_argument('--ba_frequency', type=int, help='bundle adjustment frequency', default=5)
     parser.add_argument('--vis_frequency', type=int, help='visualization frequency', default=5)
+    parser.add_argument('--sequential', type=int, help='number of previous frames to match (0 = full brute-force)', default=0)
     args = parser.parse_args()
 
     # load camera model
@@ -293,13 +308,21 @@ if __name__ == '__main__':
 
     #load images
     if args.recalculate:
-        files = get_image_files(args.input, args.max_views, args.shuffle)
-        print(args.input)
-        #save image names
-        with open('image_names.txt', 'w') as f:
-            for file in files:
-                f.write(file + '\n')
-        images = load_images(files, args.resize_factor)
+        # CASE 1: VIDEO INPUT
+        if args.video is not None:
+            print(f"Loading video: {args.video}")
+            images = load_video(args.video, stride=args.frame_stride, resize_factor=args.resize_factor)
+            # fake file names for compatibility
+            files = [f"frame_{i}" for i in range(len(images))]
+
+        # CASE 2: IMAGE FOLDER (original pipeline)
+        else:
+            files = get_image_files(args.input, args.max_views, args.shuffle)
+            print(args.input)
+            with open('image_names.txt', 'w') as f:
+                for file in files:
+                    f.write(file + '\n')
+            images = load_images(files, args.resize_factor)
     else:
         files = [line.rstrip('\n') for line in open('image_names.txt')]
 
@@ -324,7 +347,7 @@ if __name__ == '__main__':
         print("Loading matches from matches.npy...")
         matches = np.load('matches.npy', allow_pickle=True)
 
-    sfm = SFM(features, matches, camera_model, args.reprojection_threshold)
+    sfm = SFM(features, matches, camera_model, args)
     sfm.initialize()
     assert(sfm.check_observations_consisntency())
 
