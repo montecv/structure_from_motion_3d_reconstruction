@@ -103,7 +103,7 @@ if __name__ == "__main__":
     print("distortion_coefficients =", k1)
 
     print("\n=== COPY-PASTE FOR RadialCameraModel ===")
-    print(f"RadialCameraModel(np.array([{width}, {height}]), {f}, np.array([{cx}, {cy}]), {k1})")
+    print(f"SIMPLE_RADIAL {width} {height} {f} {cx} {cy} {k1}")
 
     if args.video_width and args.video_height:
         video_size = (args.video_width, args.video_height)
@@ -128,6 +128,4 @@ if __name__ == "__main__":
 
         print("\n=== COPY-PASTE FOR RadialCameraModel ===")
         print("\n# FROM VIDEO")
-        print(f"RadialCameraModel(np.array([{video_size[0]}, {video_size[1]}]), {f_new}, np.array([{cx_new}, {cy_new}]), {k1_new})")
-
-
+        print(f"SIMPLE_RADIAL {video_size[0]} {video_size[1]} {f_new} {cx_new} {cy_new} {k1_new}")

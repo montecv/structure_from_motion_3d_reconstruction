@@ -43,6 +43,12 @@ This starts a shell inside the container. You can then manually run the pipeline
 python3 sfm.py --input ./images --num_features=10000 --resize_factor=0.5 --reprojection_threshold=1e-3 --ba_frequency=10 --vis_frequency=10
 ```
 
+```
+python3 sfm.py --video IMG_9434.MOV --frame_stride 25 --camera_model "SIMPLE_RADIAL 2160 3840 2530.384465475964 1087.474877030783 1910.051336865839 0.2296724800755303" --num_features=10000 --resize_factor=1.0 --reprojection_threshold=1e-3 --ba_frequency=10 --vis_frequency=10 --sequential 3
+```
+
+
+
 Any generated files (e.g. point clouds, images, logs) will be saved directly to your local filesystem.
 
 
