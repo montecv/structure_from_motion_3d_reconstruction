@@ -46,3 +46,5 @@ python3 sfm.py --input ./images --num_features=10000 --resize_factor=0.5 --repro
 Any generated files (e.g. point clouds, images, logs) will be saved directly to your local filesystem.
 
 
+### Additional info
+If you don't know the parameters of your camera, check the README in the camera_calibration folder.
